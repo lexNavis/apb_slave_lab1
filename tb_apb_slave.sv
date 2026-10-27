@@ -70,8 +70,11 @@ module TB;
 		penable <= 1'b1;
 		@(posedge pclk);
 		wait (pready == 1'b1);
+		/* Данные готовы.
+		 * Неблокирующее присвоение обеспечивает 
+		 * немедленное считывание данных с регистра */
+		data[31:0] = prdata[31:0];
 		@(posedge pclk);
-		data[31:0]<=prdata[31:0];
 		psel <= 1'b0;
 		penable <= 1'b0;
 		@(posedge pclk);
