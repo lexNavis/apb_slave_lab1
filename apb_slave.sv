@@ -11,9 +11,12 @@ module apb_slave
 	output logic pslverr, // опциональный сигнал: признак ошибки при обращении
 	output logic [31:0] prdata // прочитанные данные
 );
-
-	logic [31:0] register_with_some_name;
-
+	/* Регистры APB */
+	logic [31:0] number_reg;
+	logic [31:0] date_reg;
+	logic [31:0] surname_reg;
+	logic [31:0] name_reg;
+	
 	//APB FSM
 	enum logic [1:0] {
 		APB_SETUP,
@@ -23,12 +26,15 @@ module apb_slave
 
 	always @(posedge pclk)
 		if (!presetn)
-			begin
-			prdata <= '0;
-			pslverr <= 1'b0;
-			pready <= 1'b0;
-			register_with_some_name <= 32'h0;
-			apb_st <= APB_SETUP;
+		begin
+			prdata 		<= '0;
+			pslverr 	<= 1'b0;
+			pready 		<= 1'b0;
+			number_reg 	<= 32'h0;
+			date_reg 	<= 32'h0;
+			surname_reg	<= 32'h0;
+			name_reg	<= 32'h0;
+			apb_st		<= APB_SETUP;
 		end
 	else
 	begin
@@ -71,18 +77,24 @@ module apb_slave
 						 * записываемое значение. */
 						if (pwdata[0] == 1'b0)
 							begin
-								register_with_some_name <= 32'hAAAA_AAAA;
+								number_reg <= 32'hAAAA_AAAA;
 							end
 						else
 							begin
-								register_with_some_name <= 32'h5555_5555;
+								number_reg <= 32'h5555_5555;
 							end
 					end
 					8'h4: begin
 						// запись в регистр со смещением 4
+						date_reg[31:0] <= pwdata[31:0];
 					end
 					8'h8: begin
 						// запись в регистр со смещением 8
+						surname_reg[31:0] <= pwdata[31:0];
+					end
+					8'hC: begin
+						// запись в регистр со смещением 8
+						name_reg[31:0] <= pwdata[31:0];
 					end
 				default:
 					begin
@@ -101,13 +113,19 @@ module apb_slave
 				case (paddr[7:0])
 					8'h0: begin
 					// чтение из регистра со смещением 0
-						prdata[31:0] <= register_with_some_name[31:0];
+						prdata[31:0] <= number_reg[31:0];
 					end
 					8'h4: begin
-						// запись из регистра со смещением 4
+						// Чтение из регистра со смещением 4
+						prdata[31:0] <= date_reg[31:0];
 					end
 					8'h8: begin
-						// запись из регистра со смещением 8
+						// Чтение из регистра со смещением 8
+						prdata[31:0] <= surname_reg[31:0];
+					end
+					8'hC: begin
+						// Чтение из регистра со смещением C
+						prdata[31:0] <= name_reg[31:0];
 					end
 				default:
 					begin
@@ -122,6 +140,9 @@ module apb_slave
 		default:
 			begin
 				pslverr <= 1'b1;
+				/* Выход из неопределенного состояния
+				 * чтобы не зависнуть в нем навечно. */
+				apb_st <= APB_SETUP;
 			end
 		endcase
 
