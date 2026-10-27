@@ -35,6 +35,10 @@ module apb_slave
 		case(apb_st)
 		APB_SETUP:
 		begin: apb_setup_st
+		/* pslverr всегда должен быть
+		 * сброшен перед началом новой 
+		 * транзакции*/
+		pslverr <= 1'b0;
 		// clear the prdata and error
 		prdata <= '0;
 		pready <= 1'b0;
@@ -62,12 +66,17 @@ module apb_slave
 				case (paddr[7:0])
 					8'h0: begin
 						// запись в регистр со смещением 0
-						register_with_some_name <= pwdata;
-						// и/или обработка записи в регистр для выполнения каких-либо действий (может быть здесь или за пределами FSM APB)
-						// if (pwdata[.....] == ..... )
-						// begin
-						// ......
-						// end
+						/* Анализ нулевого бита записываемых данных.
+						 * На основе его значения будет определяться 
+						 * записываемое значение. */
+						if (pwdata[0] == 1'b0)
+							begin
+								register_with_some_name <= 32'hAAAA_AAAA;
+							end
+						else
+							begin
+								register_with_some_name <= 32'h5555_5555;
+							end
 					end
 					8'h4: begin
 						// запись в регистр со смещением 4
@@ -115,17 +124,6 @@ module apb_slave
 				pslverr <= 1'b1;
 			end
 		endcase
-
-	// можем выполнить какие-то действия здесь
-	//if (penable==1'b0)
-	if (register_with_some_name[0] == 1'b0)
-		begin
-			register_with_some_name <= 32'hAAAA_AAAA;
-		end
-	else
-		begin
-			register_with_some_name <= 32'h5555_5555;
-		end
 
 	end // закончился блок внутри always
 
