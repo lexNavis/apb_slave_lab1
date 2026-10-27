@@ -1,0 +1,11 @@
+# build files
+*.qpf
+*.qsf
+*.bak
+*.txt
+*.rpt
+# build directories
+db/
+incremental_db/
+output_files/
+simulation/
