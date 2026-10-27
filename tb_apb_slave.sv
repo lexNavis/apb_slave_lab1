@@ -40,7 +40,13 @@ module TB;
 
 
 
-
+	task perform_rw(input [31:0] offset, [31:0] data);
+		address = p_device_offset+offset;
+		data_to_device = data;
+		apb_write(address, data_to_device);
+		apb_read(address, data_from_device);
+		$display("Addr= 0x%h, write data 0x%h, read data 0x%h", address, data_to_device, data_from_device);
+	endtask
 
 	task apb_write(input [31:0] addr, [31:0] data);
 		wait ((penable==0) && (pready == 0));
@@ -99,15 +105,11 @@ module TB;
 		repeat (5) @(posedge pclk);
 		presetn=1'b1;
 		repeat (5) @(posedge pclk);
-		address = p_device_offset+0;
-		data_to_device = 32'h12345678;
-		apb_write(address, data_to_device);
-		apb_read(address, data_from_device);
-		$display("Addr= 0x%h, write data 0x%h, read data 0x%h", address, data_to_device, data_from_device);
-		data_to_device = 32'h1;
-		apb_write(address, data_to_device);
-		apb_read(address, data_from_device);
-		$display("Addr= 0x%h, write data 0x%h, read data 0x%h", address, data_to_device, data_from_device);
+		perform_rw(32'h0,  32'h11);  // номер 17
+		perform_rw(32'h0,  32'h1);  // ещё одна проверка бита 0
+		perform_rw(32'h4,  32'h25122026);  // дата
+		perform_rw(32'h8,  32'h53484549);  // SHEI
+		perform_rw(32'hC,  32'h44454E49);  // DENI
 		repeat (10) @(posedge pclk);
 		$stop();
 	end
