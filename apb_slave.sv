@@ -1,21 +1,25 @@
 module apb_slave
 (
-	input pclk, //синхросигнал
-	input presetn, //сигнал сброса (инверсный)
-	input [31:0] paddr, //адрес обращения
-	input [31:0] pwdata, //данные для записи
-	input psel, // признак выбора устройсва
-	input penable, //признак активной транзакции
-	input pwrite, // признак операции записи
-	output logic pready, // признак готовности от устройства
-	output logic pslverr, // опциональный сигнал: признак ошибки при обращении
-	output logic [31:0] prdata // прочитанные данные
+	input 				pclk,		//синхросигнал
+	input 				presetn,	//сигнал сброса (инверсный)
+	input [31:0] 		paddr,		//адрес обращения
+	input [31:0] 		pwdata,		//данные для записи
+	input 				psel,		// признак выбора устройсва
+	input				penable,	//признак активной транзакции
+	input 				pwrite,		// признак операции записи
+	output logic 		pready,		// признак готовности от устройства
+	output logic 		pslverr,	// опциональный сигнал: признак ошибки при обращении
+	output logic [31:0] prdata		// прочитанные данные
 );
-	/* Регистры APB */
-	logic [31:0] number_reg;
-	logic [31:0] date_reg;
-	logic [31:0] surname_reg;
-	logic [31:0] name_reg;
+	localparam  logic [31:0] pi_hi	= 32'h400921FB, pi_lo	= 32'h54442D18;
+	localparam  logic [31:0] e_hi	= 32'h4005BF0A, e_lo	= 32'h8B145769;
+	/* Контрольный регистр
+	 * 0й бит - выбор числа
+	 * 1й бит - выдать старшую 
+	 * или младшую часть 
+	 * Обращение по адресу со
+	 * смещением 0 */
+	logic [31:0] ctrl_reg;
 	
 	//APB FSM
 	enum logic [1:0] {
@@ -23,17 +27,14 @@ module apb_slave
 		APB_W_ENABLE,
 		APB_R_ENABLE
 	} apb_st;
-
+	
 	always @(posedge pclk)
 		if (!presetn)
 		begin
 			prdata 		<= '0;
 			pslverr 	<= 1'b0;
 			pready 		<= 1'b0;
-			number_reg 	<= 32'h0;
-			date_reg 	<= 32'h0;
-			surname_reg	<= 32'h0;
-			name_reg	<= 32'h0;
+			ctrl_reg	<= 32'h0;
 			apb_st		<= APB_SETUP;
 		end
 	else
@@ -71,30 +72,8 @@ module apb_slave
 				pready <= 1'b1;
 				case (paddr[7:0])
 					8'h0: begin
-						// запись в регистр со смещением 0
-						/* Анализ нулевого бита записываемых данных.
-						 * На основе его значения будет определяться 
-						 * записываемое значение. */
-						if (pwdata[0] == 1'b0)
-							begin
-								number_reg <= 32'hAAAA_AAAA;
-							end
-						else
-							begin
-								number_reg <= 32'h5555_5555;
-							end
-					end
-					8'h4: begin
-						// запись в регистр со смещением 4
-						date_reg[31:0] <= pwdata[31:0];
-					end
-					8'h8: begin
-						// запись в регистр со смещением 8
-						surname_reg[31:0] <= pwdata[31:0];
-					end
-					8'hC: begin
-						// запись в регистр со смещением 8
-						name_reg[31:0] <= pwdata[31:0];
+						/* Запись в контрольный регистр */
+						ctrl_reg[31:0] <= pwdata[31:0]; 
 					end
 				default:
 					begin
@@ -112,20 +91,30 @@ module apb_slave
 				pready <= 1'b1;
 				case (paddr[7:0])
 					8'h0: begin
-					// чтение из регистра со смещением 0
-						prdata[31:0] <= number_reg[31:0];
-					end
-					8'h4: begin
-						// Чтение из регистра со смещением 4
-						prdata[31:0] <= date_reg[31:0];
-					end
-					8'h8: begin
-						// Чтение из регистра со смещением 8
-						prdata[31:0] <= surname_reg[31:0];
-					end
-					8'hC: begin
-						// Чтение из регистра со смещением C
-						prdata[31:0] <= name_reg[31:0];
+						/* Ветка выбора числа пи */
+						if (ctrl_reg[0] == 0)
+						begin
+							/* Выдача младшей части числа пи */
+							if (ctrl_reg[1] == 0) 
+							begin
+								prdata[31:0] <= pi_lo[31:0];
+							end
+							else
+							begin
+								prdata[31:0] <= pi_hi[31:0];
+							end
+						end
+						else
+						begin	/* Выдача младшей части числа е */
+							if (ctrl_reg[1] == 0) 
+							begin
+								prdata[31:0] <= e_lo[31:0];
+							end
+							else
+							begin
+								prdata[31:0] <= e_hi[31:0];
+							end
+						end
 					end
 				default:
 					begin
