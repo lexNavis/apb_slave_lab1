@@ -13,12 +13,6 @@ module TB;
 
 	parameter p_device_offset = 32'h7000_0000;
 
-
-
-
-
-
-
 	logic [31:0] address;
 	logic [31:0] data_to_device;
 	logic [31:0] data_from_device;
@@ -46,6 +40,24 @@ module TB;
 		apb_write(address, data_to_device);
 		apb_read(address, data_from_device);
 		$display("Addr= 0x%h, write data 0x%h, read data 0x%h", address, data_to_device, data_from_device);
+	endtask
+
+	task read_pi_real();
+		logic [31:0] lo, hi;
+		perform_rw(32'h0, 32'h0);   // ctrl[1]=0 → lo
+		lo = data_from_device;
+		perform_rw(32'h0, 32'h2);   // ctrl[1]=1 → hi
+		hi = data_from_device;
+		$display("pi = %.15f (hi=0x%h, lo=0x%h)", $bitstoreal({hi, lo}), hi, lo);
+	endtask
+
+	task read_e_real();
+		logic [31:0] lo, hi;
+		perform_rw(32'h0, 32'h1);   // ctrl[0]=1 (e), ctrl[1]=0 → lo
+		lo = data_from_device;
+		perform_rw(32'h0, 32'h3);   // ctrl[0]=1 (e), ctrl[1]=1 → hi
+		hi = data_from_device;
+		$display("e = %.15f (hi=0x%h, lo=0x%h)", $bitstoreal({hi, lo}), hi, lo);
 	endtask
 
 	task apb_write(input [31:0] addr, [31:0] data);
@@ -93,8 +105,6 @@ module TB;
 	begin
 		pclk=0;
 		presetn=1'b1;
-
-
 		psel='0;
 		penable='0;
 		pwrite='0;
@@ -105,11 +115,9 @@ module TB;
 		repeat (5) @(posedge pclk);
 		presetn=1'b1;
 		repeat (5) @(posedge pclk);
-		perform_rw(32'h0,  32'h11);  // номер 17
-		perform_rw(32'h0,  32'h1);  // ещё одна проверка бита 0
-		perform_rw(32'h4,  32'h25122026);  // дата
-		perform_rw(32'h8,  32'h53484549);  // SHEI
-		perform_rw(32'hC,  32'h44454E49);  // DENI
+		read_pi_real();
+		repeat (5) @(posedge pclk);
+		read_e_real();
 		repeat (10) @(posedge pclk);
 		$stop();
 	end
