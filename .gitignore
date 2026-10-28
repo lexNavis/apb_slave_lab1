@@ -1,6 +1,7 @@
 # build files
 *.qpf
 *.qsf
+*.qws
 *.bak
 *.txt
 *.rpt
@@ -9,3 +10,5 @@ db/
 incremental_db/
 output_files/
 simulation/
+# modelSim dirs
+work/
