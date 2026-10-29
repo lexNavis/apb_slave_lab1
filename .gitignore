@@ -5,6 +5,8 @@
 *.bak
 *.txt
 *.rpt
+*.mti
+*.mpf
 # build directories
 db/
 incremental_db/
@@ -12,3 +14,6 @@ output_files/
 simulation/
 # modelSim dirs
 work/
+# coverage results
+coverage_dut_html/
+coverage_html/
